@@ -3,18 +3,30 @@
 <PageTitle>Weather forecast</PageTitle>
 
 @using RedisDemo.Data
+@using RedisDemo.Extensions
+
 @inject WeatherForecastService ForecastService
+@inject IDistributedCache Cache
+
 
 <h1>Weather forecast</h1>
 
 <p>This component demonstrates fetching data from a service.</p>
 
-@if (forecasts == null)
+<button class="btn btn-primary" @onclick="LoadForecast">Load Forecast</button>
+
+@if (_forecasts is null && _loadLocation == string.Empty)
 {
-    <p><em>Loading...</em></p>
+    <p class="mt-4"><em>Click the button to load the forecast.</em></p>
+}
+else if (_forecasts is null)
+{
+    <p class="mt-4"><em>Loading...</em></p>
 }
 else
 {
+    <div class="h3 mt-4 @_isCachedData">@_loadLocation</div>
+
     <table class="table">
         <thead>
             <tr>
@@ -25,7 +37,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var forecast in forecasts)
+            @foreach (var forecast in _forecasts)
             {
                 <tr>
                     <td>@forecast.Date.ToShortDateString()</td>
@@ -39,10 +51,32 @@ else
 }
 
 @code {
-    private WeatherForecast[]? forecasts;
+    private WeatherForecast[]? _forecasts;
+    private string? _loadLocation = string.Empty;
+    private string _isCachedData = "text-info";
 
-    protected override async Task OnInitializedAsync()
+    private async Task LoadForecast()
     {
-        forecasts = await ForecastService.GetForecastAsync(DateTime.Now);
+        _forecasts = null;
+        _loadLocation = null;
+
+        var recordKey = $"WeatherForecast_{DateTime.Now:yyyyMMdd_hhmm}";
+
+        _forecasts = await Cache.GetRecordAsync<WeatherForecast[]>(recordKey);
+
+        if (_forecasts is null)
+        {
+            _forecasts = await ForecastService.GetForecastAsync(DateTime.Now);
+
+            _loadLocation = $"Loaded from the API at {DateTime.Now:yyyyMMdd_hhmmss}";
+            _isCachedData = "text-info";
+
+            await Cache.SetRecordAsync(recordKey, _forecasts);
+        }
+        else
+        {
+            _loadLocation = $"Loaded from the cache at {DateTime.Now:yyyyMMdd_hhmmss}";
+            _isCachedData = "text-danger";
+        }
     }
 }

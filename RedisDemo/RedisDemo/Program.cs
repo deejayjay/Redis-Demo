@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using RedisDemo.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,6 +6,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
+
+builder.Services.AddStackExchangeRedisCache(o => 
+{
+    o.Configuration = builder.Configuration.GetConnectionString("Redis");
+    o.InstanceName = "RedisDemo_";
+});
 
 var app = builder.Build();
 
